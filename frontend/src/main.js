@@ -67,12 +67,13 @@ class StartScene extends Phaser.Scene {
 
     // On click → start FinalScene
     startBtn.on("pointerdown", () => {
-      this.sound.play("startTone", { volume: 0.2 });
-      this.cameras.main.fadeOut(600, 0, 0, 0);
-      this.time.delayedCall(600, () => {
-        this.scene.start("FinalScene");
-      });
-    });
+  this.playTone?.(440, 0.2, 0.1); // safe dynamic tone
+  this.cameras.main.fadeOut(600, 0, 0, 0);
+  this.time.delayedCall(600, () => {
+    this.scene.start("FinalScene");
+  });
+});
+
 
     // Optional: play a soft intro tone
     try {
@@ -382,14 +383,19 @@ class FinalScene extends Phaser.Scene {
       this.showLogOverlay(!this.logOpen, 220);
     });
   }
-
-  showInteractiveTutorial() {
+showInteractiveTutorial() {
+  // dark overlay
   const overlay = this.add.rectangle(
-    this.boardX + this.boardW / 2, this.canvasH / 2,
-    this.boardW, this.canvasH, 0x000000, 0.85
+    this.boardX + this.boardW / 2,
+    this.canvasH / 2,
+    this.boardW,
+    this.canvasH,
+    0x000000,
+    0.85
   ).setDepth(500);
 
-  const textLines = [
+  // Lines of tutorial text
+  const lines = [
     "🧠 Welcome to Qubit Quest!",
     "",
     "🎯 Goal: Collapse columns in the order of the Pattern Objective.",
@@ -403,24 +409,82 @@ class FinalScene extends Phaser.Scene {
     "• SHIFT + Click 2 tiles = Entangle them.",
     "• Press 'End Turn' to continue the simulation.",
     "",
-    "✨ Coherence = stability of quantum field.",
+    "✨ Coherence = stability of the quantum field.",
     "⚡ Energy = resource to perform operations.",
     "",
-    "Click anywhere to begin your journey!"
+    "Click anywhere to begin your journey..."
   ];
 
-  const txt = this.add.text(
-    this.boardX + this.boardW / 2, 80,
-    textLines.join('\n'),
-    { fontSize: "18px", color: "#ccf", align: "center", wordWrap: { width: this.boardW - 60 } }
-  ).setOrigin(0.5, 0).setDepth(501);
+  const textObjects = [];
+  let currentLine = 0;
+  let currentChar = 0;
+  const lineDelay = 600; // delay between lines
+  const charDelay = 22;  // speed of typewriter effect per character
 
-  overlay.setInteractive().on('pointerdown', () => {
-    overlay.destroy();
-    txt.destroy();
-    this.log("Tutorial closed. Manipulate the field wisely!");
-  });
+  // “Typewriter” animation
+  const typeNextLine = () => {
+    if (currentLine >= lines.length) {
+      overlay.setInteractive().once('pointerdown', () => {
+        overlay.destroy();
+        textObjects.forEach(t => t.destroy());
+        this.playTone(640, 0.1, 0.1);
+        this.log("Tutorial closed. Manipulate the field wisely!");
+      });
+      // Add “Click to continue” pulse
+      const clickText = this.add.text(
+        this.boardX + this.boardW / 2,
+        this.canvasH - 80,
+        "▼ Click to begin ▼",
+        { fontSize: "18px", color: "#9ff" }
+      ).setOrigin(0.5).setDepth(501);
+      this.tweens.add({
+        targets: clickText,
+        alpha: { from: 0.6, to: 1 },
+        duration: 800,
+        yoyo: true,
+        repeat: -1
+      });
+      return;
+    }
+
+    const line = lines[currentLine];
+    const text = this.add.text(
+      this.boardX + this.boardW / 2,
+      100 + currentLine * 30,
+      "",
+      { fontSize: "18px", color: "#ccf", fontFamily: "monospace", align: "center" }
+    ).setOrigin(0.5).setDepth(501);
+
+    textObjects.push(text);
+
+    const addChar = () => {
+      if (currentChar < line.length) {
+        text.setText(line.substring(0, currentChar + 1));
+        this.playTone(200 + (Math.random() * 400), 0.02, 0.015);
+        currentChar++;
+        this.time.delayedCall(charDelay, addChar);
+      } else {
+        currentChar = 0;
+        currentLine++;
+        this.time.delayedCall(lineDelay, typeNextLine);
+      }
+    };
+
+    addChar();
+  };
+  // Subtle glow flicker before tutorial starts
+this.tweens.add({
+  targets: overlay,
+  alpha: { from: 0.6, to: 0.85 },
+  duration: 1000,
+  yoyo: true,
+  repeat: -1,
+  ease: 'Sine.easeInOut'
+});
+
+  typeNextLine(); // Start typing sequence
 }
+
   showLogOverlay(show=true, duration=220) {
     if (show === this.logOpen) return;
     this.logOpen = show;
@@ -1210,27 +1274,30 @@ endGame(win) {
   btn.on("pointerout", () => btn.setStyle({ backgroundColor: "#9ff" }));
 
   btn.on("pointerdown", () => {
-    btn.disableInteractive();
-    this.playTone(600, 0.15, 0.1);
+  btn.disableInteractive();
+  this.playTone(600, 0.15, 0.1);
 
-    const restartingText = this.add.text(
-      this.boardX + this.boardW / 2,
-      this.canvasH / 2 + 90,
-      "Restarting Quantum Simulation...",
-      { fontSize: "16px", color: "#9ff" }
-    ).setOrigin(0.5).setDepth(306);
+  const restartingText = this.add.text(
+    this.boardX + this.boardW / 2,
+    this.canvasH / 2 + 90,
+    "Restarting Quantum Simulation...",
+    { fontSize: "16px", color: "#9ff" }
+  ).setOrigin(0.5).setDepth(306);
 
-    this.tweens.add({
-      targets: [overlay, text, btn, restartingText],
-      alpha: 0,
-      duration: 800,
-      onComplete: () => {
+  this.tweens.add({
+    targets: [overlay, text, btn, restartingText],
+    alpha: 0,
+    duration: 800,
+    onComplete: () => {
+      this.time.delayedCall(100, () => {
         this.scene.resume();
         this.scene.restart();
         this._ending = false;
-      }
-    });
+      });
+    }
   });
+});
+
 
   this.tweens.add({
     targets: overlay,
