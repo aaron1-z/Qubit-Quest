@@ -122,6 +122,34 @@ class FinalScene extends Phaser.Scene {
     this.log("Welcome to Qubit Quest — Fold the pattern coherently.");
   }
 
+  showTutorialOverlay() {
+  const overlay = this.add.rectangle(
+    this.boardX + this.boardW / 2, this.canvasH / 2,
+    this.boardW, this.canvasH, 0x000000, 0.8
+  ).setDepth(500);
+  const lines = [
+    "🧠 Welcome to Qubit Quest: Quantum Witness",
+    "Click any tile to select a column.",
+    "Press H for Hadamard, Q for Phase, E to Peek.",
+    "Press SPACE to Measure (collapse).",
+    "Form the Pattern Objective coherently to win.",
+    "Press T to toggle between Turn and Real-time modes."
+  ];
+  const texts = lines.map((t, i) =>
+    this.add.text(this.boardX + this.boardW / 2, 160 + i * 40, t,
+      { fontSize: "18px", color: "#ccf", align: "center" })
+      .setOrigin(0.5).setDepth(501)
+  );
+
+  const btn = this.add.text(this.boardX + this.boardW / 2, 480, "Start Simulation", {
+    fontSize: "20px", color: "#000", backgroundColor: "#9ff", padding: { x: 14, y: 8 }
+  }).setOrigin(0.5).setInteractive().setDepth(502);
+
+  btn.on("pointerdown", () => {
+    overlay.destroy(); texts.forEach(t => t.destroy()); btn.destroy();
+    this.log("Tutorial dismissed. Begin manipulating the field.");
+  });
+}
   // -------------------- Visual layers --------------------
   createBackground() {
     const w = this.scale.width, h = this.canvasH;
