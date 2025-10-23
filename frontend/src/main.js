@@ -13,6 +13,81 @@ Features:
  - Small synth tones for actions; robust backend fallback
 */
 
+class StartScene extends Phaser.Scene {
+  constructor() {
+    super("StartScene");
+  }
+
+  preload() {}
+
+  create() {
+    const { width, height } = this.scale;
+    this.cameras.main.setBackgroundColor("#05020a");
+
+    // Animated glow
+    const glow = this.add.graphics();
+    let glowPhase = 0;
+
+    this.time.addEvent({
+      delay: 16,
+      loop: true,
+      callback: () => {
+        glowPhase += 0.04;
+        glow.clear();
+        const alpha = 0.15 + Math.sin(glowPhase) * 0.08;
+        glow.fillStyle(0x00ffff, alpha);
+        glow.fillCircle(width / 2, height / 2, 180 + Math.sin(glowPhase * 2) * 10);
+      },
+    });
+
+    // Title
+    const title = this.add.text(width / 2, height / 2 - 120, "QUBIT QUEST", {
+      fontSize: "48px",
+      color: "#9ff",
+      fontFamily: "monospace",
+      fontStyle: "bold",
+    }).setOrigin(0.5);
+
+    // Subtitle
+    this.add.text(width / 2, height / 2 - 60, "A Quantum Field Simulation Puzzle", {
+      fontSize: "18px",
+      color: "#bdf",
+    }).setOrigin(0.5);
+
+    // Button
+    const startBtn = this.add.text(width / 2, height / 2 + 60, "▶ Start Simulation", {
+      fontSize: "24px",
+      color: "#000",
+      backgroundColor: "#9ff",
+      padding: { x: 20, y: 10 },
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+
+    startBtn.on("pointerover", () => startBtn.setStyle({ backgroundColor: "#bff" }));
+    startBtn.on("pointerout", () => startBtn.setStyle({ backgroundColor: "#9ff" }));
+
+    // On click → start FinalScene
+    startBtn.on("pointerdown", () => {
+      this.sound.play("startTone", { volume: 0.2 });
+      this.cameras.main.fadeOut(600, 0, 0, 0);
+      this.time.delayedCall(600, () => {
+        this.scene.start("FinalScene");
+      });
+    });
+
+    // Optional: play a soft intro tone
+    try {
+      const ctx = this.sound.context;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = "sine";
+      o.frequency.value = 240;
+      g.gain.value = 0.05;
+      o.start(); o.stop(ctx.currentTime + 1.2);
+    } catch (e) {}
+  }
+}
+
 class FinalScene extends Phaser.Scene {
   constructor() {
     super("FinalScene");
@@ -120,6 +195,8 @@ class FinalScene extends Phaser.Scene {
     this.renderRowLocal();
     this.updateUI();
     this.log("Welcome to Qubit Quest — Fold the pattern coherently.");
+    this.showInteractiveTutorial();
+
   }
 
   showTutorialOverlay() {
@@ -306,6 +383,44 @@ class FinalScene extends Phaser.Scene {
     });
   }
 
+  showInteractiveTutorial() {
+  const overlay = this.add.rectangle(
+    this.boardX + this.boardW / 2, this.canvasH / 2,
+    this.boardW, this.canvasH, 0x000000, 0.85
+  ).setDepth(500);
+
+  const textLines = [
+    "🧠 Welcome to Qubit Quest!",
+    "",
+    "🎯 Goal: Collapse columns in the order of the Pattern Objective.",
+    "",
+    "Controls:",
+    "• Click a column → select it.",
+    "• Press H for Hadamard (mix amplitudes).",
+    "• Press Q for Phase (stabilize pattern).",
+    "• Press E for Peek (reveal brightest column).",
+    "• Press SPACE to Measure (collapse).",
+    "• SHIFT + Click 2 tiles = Entangle them.",
+    "• Press 'End Turn' to continue the simulation.",
+    "",
+    "✨ Coherence = stability of quantum field.",
+    "⚡ Energy = resource to perform operations.",
+    "",
+    "Click anywhere to begin your journey!"
+  ];
+
+  const txt = this.add.text(
+    this.boardX + this.boardW / 2, 80,
+    textLines.join('\n'),
+    { fontSize: "18px", color: "#ccf", align: "center", wordWrap: { width: this.boardW - 60 } }
+  ).setOrigin(0.5, 0).setDepth(501);
+
+  overlay.setInteractive().on('pointerdown', () => {
+    overlay.destroy();
+    txt.destroy();
+    this.log("Tutorial closed. Manipulate the field wisely!");
+  });
+}
   showLogOverlay(show=true, duration=220) {
     if (show === this.logOpen) return;
     this.logOpen = show;
@@ -379,104 +494,195 @@ class FinalScene extends Phaser.Scene {
   }
 
   // -------------------- Actions (Q/H/E/M) --------------------
-  async applyPhase() {
-    if (this.energy < 1) { this.log("Need 1 energy for Phase."); this.recordAction('Q-fail','energy'); return; }
-    if (this.selectedCol === undefined) { this.log("Select a column first by clicking a tile."); this.recordAction('Q-fail','no-select'); return; }
-    this.energy -= 1;
-    const c = this.selectedCol;
-    this.quantumEngine.state = this.quantumEngine.state.map((v,i)=> i===c ? v*0.82 : v);
-    const s = this.quantumEngine.state.reduce((a,b)=>a+b,0)||1;
-    this.quantumEngine.state = this.quantumEngine.state.map(v=>v/s);
-    this.visualizeProbs(this.quantumEngine.state);
-    this.log(`Applied Phase to column ${c}.`);
-    this.recordAction('Q', `col ${c}`);
-    this.addMarker(this.row, c, 'Q', 0xffcc00);
-    this.playTone(720, 0.12, 0.06);
-    this.actionUsedThisTurn = true;
-    this.autoPeekLog();
-    if (this.turnBased) this.endTurnIfActionUsed();
+ async applyPhase() {
+  if (this._ending) return;
+  if (this.energy < 1) {
+    this.log("Need 1 energy for Phase operation.");
+    this.recordAction("Q-fail", "energy");
+    return;
   }
+  if (this.selectedCol === undefined) {
+    this.log("Select a column first by clicking a tile.");
+    this.recordAction("Q-fail", "no-select");
+    return;
+  }
+
+  this.energy -= 1;
+  const c = this.selectedCol;
+  this.log(`Applied Phase gate to column ${c}.`);
+  this.recordAction("Q", `col ${c}`);
+
+  // Subtle amplitude phase shift (stabilizes state)
+  const factor = 0.88 + Math.random() * 0.1;
+  this.quantumEngine.state[c] *= factor;
+
+  // Re-normalize
+  const s = this.quantumEngine.state.reduce((a, b) => a + b, 0) || 1;
+  this.quantumEngine.state = this.quantumEngine.state.map(v => v / s);
+
+  // Phase reduces coherence slightly but improves alignment
+  this.coherence = Math.max(0, this.coherence - 2 + Math.random() * 1.5);
+  this.score += 5; // small reward for stability tuning
+
+  this.visualizeProbs(this.quantumEngine.state);
+  this.addMarker(this.row, c, "Q", 0xffcc00);
+  this.playTone(720, 0.12, 0.06);
+  this.actionUsedThisTurn = true;
+  this.autoPeekLog();
+  if (this.turnBased) this.endTurnIfActionUsed();
+}
 
   async applyLocalHadamard() {
-    if (this.energy < 2) { this.log("Need 2 energy for local H."); this.recordAction('H-fail','energy'); return; }
-    if (this.selectedCol === undefined) { this.log("Select a column first by clicking a tile."); this.recordAction('H-fail','no-select'); return; }
-    this.energy -= 2;
-    const c = this.selectedCol;
-    const left = (c-1+this.gridW)%this.gridW, right = (c+1)%this.gridW;
-    const arr = this.quantumEngine.state.slice();
-    arr[c] = (arr[left]+arr[c]+arr[right]) / 3;
-    const s = arr.reduce((a,b)=>a+b,0)||1;
-    this.quantumEngine.state = arr.map(v=>v/s);
-    this.visualizeProbs(this.quantumEngine.state);
-    this.log(`Local Hadamard at column ${c}.`);
-    this.recordAction('H', `col ${c}`);
-    this.addMarker(this.row, c, 'H', 0x44ffee);
-    this.playTone(980, 0.11, 0.08);
-    this.actionUsedThisTurn = true;
-    this.autoPeekLog();
-    if (this.turnBased) this.endTurnIfActionUsed();
+  if (this._ending) return;
+  if (this.energy < 2) {
+    this.log("Need 2 energy for local Hadamard.");
+    this.recordAction("H-fail", "energy");
+    return;
   }
+  if (this.selectedCol === undefined) {
+    this.log("Select a column first by clicking a tile.");
+    this.recordAction("H-fail", "no-select");
+    return;
+  }
+
+  this.energy -= 2;
+  const c = this.selectedCol;
+  const left = (c - 1 + this.gridW) % this.gridW;
+  const right = (c + 1) % this.gridW;
+  const arr = this.quantumEngine.state.slice();
+
+  // Local interference: balance nearby amplitudes
+  const avg = (arr[left] + arr[c] + arr[right]) / 3;
+  arr[c] = (arr[c] + avg) / 2;
+
+  const s = arr.reduce((a, b) => a + b, 0) || 1;
+  this.quantumEngine.state = arr.map(v => v / s);
+
+  // Hadamard boosts coherence (if stable)
+  if (Math.random() > 0.2) {
+    this.coherence = Math.min(100, this.coherence + 4);
+    this.log(`Local Hadamard at column ${c} increased coherence.`);
+  } else {
+    this.coherence = Math.max(0, this.coherence - 5);
+    this.log(`Hadamard misalignment caused coherence loss.`);
+  }
+
+  this.score += 10; // small reward
+  this.visualizeProbs(this.quantumEngine.state);
+  this.addMarker(this.row, c, "H", 0x44ffee);
+  this.playTone(980, 0.11, 0.08);
+  this.actionUsedThisTurn = true;
+  this.autoPeekLog();
+  if (this.turnBased) this.endTurnIfActionUsed();
+}
+
 
   async peek() {
-    if (this.energy < 1) { this.log("Need 1 energy to peek."); this.recordAction('E-fail','energy'); return; }
-    this.energy -= 1;
-    const res = await runQWalk({ n_positions:this.gridW, steps:1, coin:'hadamard', start_pos:this.currentStartPos, custom_coin_angles:[] });
-    const probs = res && !res.error ? res.probabilities : this.quantumEngine.state;
-    const b = probs.indexOf(Math.max(...probs));
-    this.log(`Peek: brightest column ${b}.`);
-    this.recordAction('E', `col ${b}`);
-    this.addMarker(this.row, b, 'E', 0xaa66ff);
-    this.tiles[this.row][b].setStrokeStyle(5, 0xffff00);
-    this.time.delayedCall(700, ()=> this.tiles[this.row][b].setStrokeStyle(3, 0x07131e));
-    this.playTone(420, 0.08, 0.06);
-    this.actionUsedThisTurn = true;
-    this.autoPeekLog();
-    if (this.turnBased) this.endTurnIfActionUsed();
+  if (this.energy < 1) {
+    this.log("Need 1 energy to peek.");
+    this.recordAction('E-fail', 'energy');
+    return;
+  }
+  this.energy -= 1;
+  this.coherence = Math.max(0, this.coherence - 1.5); // 👈 new line
+
+  const res = await runQWalk({
+    n_positions: this.gridW,
+    steps: 1,
+    coin: 'hadamard',
+    start_pos: this.currentStartPos,
+    custom_coin_angles: []
+  });
+
+  const probs = res && !res.error ? res.probabilities : this.quantumEngine.state;
+  const b = probs.indexOf(Math.max(...probs));
+
+  this.log(`Peek: brightest column ${b}.`);
+  this.recordAction('E', `col ${b}`);
+  this.addMarker(this.row, b, 'E', 0xaa66ff);
+
+  this.tiles[this.row][b].setStrokeStyle(5, 0xffff00);
+  this.time.delayedCall(700, () => this.tiles[this.row][b].setStrokeStyle(3, 0x07131e));
+
+  this.playTone(420, 0.08, 0.06);
+  this.actionUsedThisTurn = true;
+  this.autoPeekLog();
+  if (this.turnBased) this.endTurnIfActionUsed();
+}
+
+ async measure() {
+  if (this._ending) return;
+
+  // Cannot measure with no energy
+  if (this.energy <= 0) {
+    this.flashEnergyWarning();
+    return;
   }
 
-  async measure() {
-    this.log("Measuring (collapse)...");
-    this.recordAction('M', `row ${this.row}`);
-    // try backend
-    const res = await runQWalk({ n_positions:this.gridW, steps:1, coin:'hadamard', start_pos:this.currentStartPos, custom_coin_angles:[] });
-    const probs = res && !res.error ? res.probabilities : this.quantumEngine.state;
-    this.visualizeProbs(probs);
-    const idx = this.weightedRandom(probs);
-    const meta = this.tileMeta[`${this.row}_${idx}`] || { type:'normal' };
-    let coherent = true;
-    if (meta.type === 'decoField') {
-      coherent = Math.random() > 0.5;
-      this.log("DecoField affected collapse.");
-    }
-    if (meta.type === 'photonGate') {
-      this.coherence = Math.min(100, this.coherence + 6);
-      this.log("PhotonGate reinforced coherence!");
-      this.quantumEngine.state = this.quantumEngine.state.map((v,i)=> (Math.abs(i-idx)<=1) ? v*1.12 : v);
-      const s = this.quantumEngine.state.reduce((a,b)=>a+b,0)||1;
-      this.quantumEngine.state = this.quantumEngine.state.map(v=>v/s);
-    }
-    if (meta.type === 'portal' && meta.linked && Math.random() < 0.6) {
-      const linked = meta.linked;
-      this.log("Portal teleported the collapse to a linked tile.");
-      this.addMarker(this.row, idx, 'M', 0xffffff);
-      this.playTone(300, 0.06, 0.1);
-      this.handleCollapse(linked.c, linked.r, coherent);
-      this.actionUsedThisTurn = true; this.autoPeekLog();
-      if (this.turnBased) this.endTurnIfActionUsed();
+  // Deduct small energy cost for measuring
+  this.energy -= 1;
+
+  this.log("🔍 Measuring quantum field...");
+  this.recordAction('M', `row ${this.row}`);
+
+  // Measurement success depends on coherence
+  const coherenceRisk = Math.max(0, 60 - this.coherence);
+  const failChance = coherenceRisk / 100;
+
+  this.cameras.main.flash(150, 100, 200, 255);
+
+  // Failed measurement (decoherence)
+  if (Math.random() < failChance) {
+    this.coherence = Math.max(0, this.coherence - 20);
+    this.lives -= 1;
+    this.log("💀 Decoherence! The field destabilized.");
+    this.playTone(200, 0.1, 0.2);
+    this.showFloatingText("Decoherence!", this.boardX + this.boardW / 2, this.canvasH / 2, "#ff6666");
+
+    if (this.lives <= 0) {
+      this.endGame(false);
       return;
     }
-    if (meta.type === 'hadamardBoost') {
-      coherent = Math.random() > 0.28;
-      this.log("HadamardBoost affected collapse chance.");
-    }
-
-    this.addMarker(this.row, idx, 'M', 0xffffff);
-    this.playTone(200, 0.05, 0.12);
-    this.handleCollapse(idx, coherent);
-    this.actionUsedThisTurn = true;
-    this.autoPeekLog();
-    if (this.turnBased) this.endTurnIfActionUsed();
+    this.updateUI();
+    return;
   }
+
+  // Successful measurement — fetch quantum walk
+  const res = await runQWalk({ n_positions: this.gridW, steps: 1, coin: 'hadamard', start_pos: this.currentStartPos, custom_coin_angles: [] });
+  const probs = res && !res.error ? res.probabilities : this.quantumEngine.state;
+  const idx = this.weightedRandom(probs);
+  this.addMarker(this.row, idx, 'M', 0xffffff);
+  this.playTone(300, 0.08, 0.08);
+
+  // Check pattern coherence
+  const success = this.checkPattern(idx, true);
+  if (success) {
+    this.score += 50;
+    this.coherence = Math.min(100, this.coherence + 5);
+    this.showFloatingText("+50", this.boardX + this.boardW / 2, this.canvasH / 2, "#66ffcc");
+  } else {
+    this.coherence = Math.max(0, this.coherence - 10);
+    this.energy = Math.max(0, this.energy - 1);
+    this.showFloatingText("Collapse Error", this.boardX + this.boardW / 2, this.canvasH / 2, "#ffaa00");
+    this.playTone(260, 0.1, 0.15);
+  }
+
+  this.updateUI();
+
+  if (this.coherence <= 0 || this.lives <= 0) {
+    this.endGame(false);
+    return;
+  }
+
+  if (this.score >= 300) {
+    this.endGame(true);
+    return;
+  }
+
+  this.actionUsedThisTurn = true;
+  this.autoPeekLog();
+  if (this.turnBased) this.endTurnIfActionUsed();
+}
 
   // -------------------- Collapse & consequences --------------------
   handleCollapse(col, coherent) {
@@ -922,47 +1128,130 @@ flashEnergyWarning() {
   this.playTone(160, 0.1, 0.15);
 }
 
+showFloatingText(text, x, y, color = "#fff") {
+  const t = this.add.text(x, y, text, {
+    fontSize: "20px",
+    color,
+    fontStyle: "bold"
+  }).setOrigin(0.5).setDepth(400);
+
+  this.tweens.add({
+    targets: t,
+    y: y - 40,
+    alpha: 0,
+    duration: 800,
+    ease: "Cubic.easeOut",
+    onComplete: () => t.destroy()
+  });
+}
+
   // -------------------- cleanup and end --------------------
   restart() { this.scene.restart(); }
 
- endGame(win) {
-  const msg = win ? `✨ Quantum Victory! Score ${this.score}` : `💀 System Decohered! Score ${this.score}`;
+endGame(win) {
+  const msg = win
+    ? `✨ Quantum Victory! Score ${this.score}`
+    : `💀 System Decohered! Score ${this.score}`;
+
+  if (this._ending) return;
+  this._ending = true;
+
   this.scene.pause();
 
   const overlay = this.add.rectangle(
-    this.boardX + this.boardW / 2, this.canvasH / 2,
-    this.boardW, this.canvasH, 0x000000, 0.85
-  ).setDepth(300);
+    this.boardX + this.boardW / 2,
+    this.canvasH / 2,
+    this.boardW,
+    this.canvasH,
+    0x000000,
+    0.85
+  ).setDepth(300).setInteractive();
 
   const text = this.add.text(
-    this.boardX + this.boardW / 2, this.canvasH / 2 - 30,
-    msg, { fontSize: "28px", color: "#fff", fontStyle: "bold" }
+    this.boardX + this.boardW / 2,
+    this.canvasH / 2 - 30,
+    msg,
+    { fontSize: "28px", color: "#fff", fontStyle: "bold" }
   ).setOrigin(0.5).setDepth(301);
 
-  // shimmer wave particles
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 60; i++) {
     const px = this.add.circle(
       this.boardX + Phaser.Math.Between(0, this.boardW),
       Phaser.Math.Between(0, this.canvasH),
       Phaser.Math.Between(1, 3),
-      win ? 0x66ffcc : 0xff6666, 0.8
+      win ? 0x66ffcc : 0xff6666,
+      0.8
     ).setDepth(302);
-    this.tweens.add({ targets: px, alpha: 0, duration: 1000 + Math.random()*500, onComplete: ()=> px.destroy() });
+
+    this.tweens.add({
+      targets: px,
+      alpha: 0,
+      duration: 800 + Math.random() * 600,
+      onComplete: () => px.destroy()
+    });
   }
 
   const btn = this.add.text(
-    this.boardX + this.boardW / 2, this.canvasH / 2 + 40,
-    "↻ Restart", { fontSize: "20px", color: "#000", backgroundColor: "#9ff", padding: { x: 12, y: 6 } }
-  ).setOrigin(0.5).setInteractive().setDepth(303);
-  btn.on("pointerdown", () => this.scene.restart());
+    this.boardX + this.boardW / 2,
+    this.canvasH / 2 + 40,
+    "↻ Restart Quantum Field",
+    {
+      fontSize: "20px",
+      color: "#000",
+      backgroundColor: "#9ff",
+      padding: { x: 14, y: 8 }
+    }
+  )
+    .setOrigin(0.5)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(305);
+
+  btn.on("pointerover", () => btn.setStyle({ backgroundColor: "#bff" }));
+  btn.on("pointerout", () => btn.setStyle({ backgroundColor: "#9ff" }));
+
+  btn.on("pointerdown", () => {
+    btn.disableInteractive();
+    this.playTone(600, 0.15, 0.1);
+
+    const restartingText = this.add.text(
+      this.boardX + this.boardW / 2,
+      this.canvasH / 2 + 90,
+      "Restarting Quantum Simulation...",
+      { fontSize: "16px", color: "#9ff" }
+    ).setOrigin(0.5).setDepth(306);
+
+    this.tweens.add({
+      targets: [overlay, text, btn, restartingText],
+      alpha: 0,
+      duration: 800,
+      onComplete: () => {
+        this.scene.resume();
+        this.scene.restart();
+        this._ending = false;
+      }
+    });
+  });
+
+  this.tweens.add({
+    targets: overlay,
+    alpha: { from: 0.85, to: 0.92 },
+    duration: 1000,
+    yoyo: true,
+    repeat: -1,
+    ease: "Sine.easeInOut"
+  });
 }
+
 }
-// Start Phaser Game
-new Phaser.Game({
+
+const config = {
   type: Phaser.AUTO,
   width: Math.max(window.innerWidth - 20, 1000),
   height: 640,
   backgroundColor: "#05020a",
   parent: "game-container",
-  scene: [FinalScene]
-});
+  scene: [StartScene, FinalScene] // StartScene FIRST!
+};
+
+new Phaser.Game(config);
+
