@@ -761,6 +761,9 @@ class FinalScene extends Phaser.Scene {
     grd.addColorStop(1, `rgba(6,6,12,0)`);
     ctx.fillStyle = grd; ctx.fillRect(0,0,w,h);
     this.textures.get('wave').refresh();
+    // tint based on coherence
+    const hue = Phaser.Math.Interpolation.Linear([180, 0], 1 - (this.coherence / 100));
+    this.cameras.main.setBackgroundColor(`hsl(${hue}, 50%, 4%)`);
     this.wavePhase += this.waveSpeed;
   }
 
