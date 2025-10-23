@@ -800,42 +800,74 @@ class FinalScene extends Phaser.Scene {
   }
 
   // -------------------- lifecycle update --------------------
-  update(time, delta) {
-    // player visual movement
-    const speed = 4;
-    if (this.cursors.left.isDown) { this.playerA.x -= speed; this.playerB.x += speed; }
-    if (this.cursors.right.isDown) { this.playerA.x += speed; this.playerB.x -= speed; }
-    this.playerA.x = Phaser.Math.Clamp(this.playerA.x, this.boardX + 20, this.boardX + this.boardW - 20);
-    this.playerB.x = Phaser.Math.Clamp(this.playerB.x, this.boardX + 20, this.boardX + this.boardW - 20);
+ update(time, delta) {
+  // player visual movement
+  const speed = 4;
+  if (this.cursors.left.isDown) { this.playerA.x -= speed; this.playerB.x += speed; }
+  if (this.cursors.right.isDown) { this.playerA.x += speed; this.playerB.x -= speed; }
+  this.playerA.x = Phaser.Math.Clamp(this.playerA.x, this.boardX + 20, this.boardX + this.boardW - 20);
+  this.playerB.x = Phaser.Math.Clamp(this.playerB.x, this.boardX + 20, this.boardX + this.boardW - 20);
 
-    // input keys
+  // input keys — block H/Q/E if out of energy
+  if (this.energy > 0) {
     if (Phaser.Input.Keyboard.JustDown(this.keyH)) { this.applyLocalHadamard(); this.autoPeekLog(); }
     if (Phaser.Input.Keyboard.JustDown(this.keyQ)) { this.applyPhase(); this.autoPeekLog(); }
     if (Phaser.Input.Keyboard.JustDown(this.keyE)) { this.peek(); this.autoPeekLog(); }
-    if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) { this.measure(); this.autoPeekLog(); }
-    if (Phaser.Input.Keyboard.JustDown(this.keyT)) {
-      this.turnBased = !this.turnBased;
-      this.modeText.setText(this.turnBased ? "Mode: TURN-BASED (T toggles)" : "Mode: REAL-TIME (T toggles)");
-      this.log(`Mode switched to ${this.turnBased ? 'TURN-BASED' : 'REAL-TIME'}.`);
+  } else {
+    if (
+      Phaser.Input.Keyboard.JustDown(this.keyH) ||
+      Phaser.Input.Keyboard.JustDown(this.keyQ) ||
+      Phaser.Input.Keyboard.JustDown(this.keyE)
+    ) {
+      this.flashEnergyWarning();
     }
-    if (Phaser.Input.Keyboard.JustDown(this.keyL)) this.showLogOverlay(!this.logOpen, 160);
-
-    // wave field anim
-    this.drawWaveField();
-
-    // update marker positions (so they track tiles if window resized or players move)
-    for (const m of this.markers) {
-      if (m.display && !m.display.destroyed) {
-        const mx = this.boardX + m.c * this.tileSize + this.tileSize/2;
-        const my = m.r * this.tileSize + this.tileSize/2;
-        m.display.setPosition(mx, my - 8);
-      }
-    }
-
-    // update pattern icons (labels)
-    this.updatePatternUI();
-    this.updateUI();
   }
+
+  if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) { this.measure(); this.autoPeekLog(); }
+  if (Phaser.Input.Keyboard.JustDown(this.keyT)) {
+    this.turnBased = !this.turnBased;
+    this.modeText.setText(this.turnBased ? "Mode: TURN-BASED (T toggles)" : "Mode: REAL-TIME (T toggles)");
+    this.log(`Mode switched to ${this.turnBased ? 'TURN-BASED' : 'REAL-TIME'}.`);
+  }
+  if (Phaser.Input.Keyboard.JustDown(this.keyL)) this.showLogOverlay(!this.logOpen, 160);
+
+  // wave field animation
+  this.drawWaveField();
+
+  // update marker positions (so they track tiles if window resized or players move)
+  for (const m of this.markers) {
+    if (m.display && !m.display.destroyed) {
+      const mx = this.boardX + m.c * this.tileSize + this.tileSize / 2;
+      const my = m.r * this.tileSize + this.tileSize / 2;
+      m.display.setPosition(mx, my - 8);
+    }
+  }
+
+  // update UI
+  this.updatePatternUI();
+  this.updateUI();
+}
+
+flashEnergyWarning() {
+  const warn = this.add.text(
+    this.boardX + this.boardW / 2,
+    40,
+    "⚡ OUT OF ENERGY ⚡",
+    { fontSize: "22px", color: "#ff6688" }
+  )
+    .setOrigin(0.5)
+    .setDepth(200);
+
+  this.tweens.add({
+    targets: warn,
+    alpha: 0,
+    y: 10,
+    duration: 800,
+    onComplete: () => warn.destroy()
+  });
+
+  this.playTone(160, 0.1, 0.15);
+}
 
   // -------------------- cleanup and end --------------------
   restart() { this.scene.restart(); }
