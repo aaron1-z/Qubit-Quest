@@ -882,14 +882,38 @@ flashEnergyWarning() {
   // -------------------- cleanup and end --------------------
   restart() { this.scene.restart(); }
 
-  endGame(win) {
-    const msg = win ? `✨ Quantum Victory! Score ${this.score}` : `💀 System Decohered! Score ${this.score}`;
-    this.add.rectangle(this.boardX + this.boardW/2, this.canvasH/2, this.boardW, this.canvasH, 0x000000, 0.7).setDepth(200);
-    this.add.text(this.boardX + this.boardW/2 - 160, this.canvasH/2 - 20, msg, { fontSize: '26px', color:'#fff' }).setDepth(201);
-    this.scene.pause();
-  }
-}
+ endGame(win) {
+  const msg = win ? `✨ Quantum Victory! Score ${this.score}` : `💀 System Decohered! Score ${this.score}`;
+  this.scene.pause();
 
+  const overlay = this.add.rectangle(
+    this.boardX + this.boardW / 2, this.canvasH / 2,
+    this.boardW, this.canvasH, 0x000000, 0.85
+  ).setDepth(300);
+
+  const text = this.add.text(
+    this.boardX + this.boardW / 2, this.canvasH / 2 - 30,
+    msg, { fontSize: "28px", color: "#fff", fontStyle: "bold" }
+  ).setOrigin(0.5).setDepth(301);
+
+  // shimmer wave particles
+  for (let i = 0; i < 50; i++) {
+    const px = this.add.circle(
+      this.boardX + Phaser.Math.Between(0, this.boardW),
+      Phaser.Math.Between(0, this.canvasH),
+      Phaser.Math.Between(1, 3),
+      win ? 0x66ffcc : 0xff6666, 0.8
+    ).setDepth(302);
+    this.tweens.add({ targets: px, alpha: 0, duration: 1000 + Math.random()*500, onComplete: ()=> px.destroy() });
+  }
+
+  const btn = this.add.text(
+    this.boardX + this.boardW / 2, this.canvasH / 2 + 40,
+    "↻ Restart", { fontSize: "20px", color: "#000", backgroundColor: "#9ff", padding: { x: 12, y: 6 } }
+  ).setOrigin(0.5).setInteractive().setDepth(303);
+  btn.on("pointerdown", () => this.scene.restart());
+}
+}
 // Start Phaser Game
 new Phaser.Game({
   type: Phaser.AUTO,
