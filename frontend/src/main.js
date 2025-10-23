@@ -749,11 +749,21 @@ class FinalScene extends Phaser.Scene {
     const t = new Date().toLocaleTimeString();
     this.recentActions.unshift({ key, info, time: t });
     if (this.recentActions.length > 12) this.recentActions.pop();
-    for (let i=0;i<this.recentActionTexts.length;i++) {
-      const txt = this.recentActions[i];
-      this.recentActionTexts[i].setText(txt ? `${txt.time} ${txt.key}: ${txt.info}` : "");
-    }
-  }
+    for (let i = 0; i < this.recentActionTexts.length; i++) {
+  const act = this.recentActions[i];
+  const t = this.recentActionTexts[i];
+  if (!act) { t.setText(""); continue; }
+
+  let color = "#ddd";
+  if (/fail/i.test(act.key)) color = "#ff6666";
+  else if (/event/i.test(act.key)) color = "#ffaa44";
+  else if (/M|H|Q|E|Entangle/.test(act.key)) color = "#99ffcc";
+
+  t.setColor(color);
+  t.setText(`${act.time.split(" ")[0]} ${act.key}: ${act.info}`);
+}
+
+}
 
   log(msg) {
     const t = new Date().toLocaleTimeString();
