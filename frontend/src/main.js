@@ -500,16 +500,28 @@ class FinalScene extends Phaser.Scene {
   }
 
   // -------------------- Markers and Memory --------------------
-  addMarker(r,c,symbol,color) {
-    // symbol over tile; place with turnPlaced to allow fading after turns
-    const mx = this.boardX + c*this.tileSize + this.tileSize/2;
-    const my = r*this.tileSize + this.tileSize/2;
-    const txt = this.add.text(mx-8, my-10, symbol, { fontSize: "28px", color: Phaser.Display.Color.IntegerToColor(color).rgba }).setDepth(12);
-    txt.setOrigin(0.5);
-    this.markers.push({ r,c,symbol,color,turnPlaced:this.turnNumber, display:txt });
-    // set tile metadata marker list
-    this.tileMeta[`${r}_${c}`].markers.push({ symbol, color, turn:this.turnNumber });
-  }
+  addMarker(r, c, symbol, color) {
+  const key = `${r}_${c}`;
+  const existing = this.markers.filter(m => m.r === r && m.c === c);
+  // remove older ones first
+  existing.forEach(m => { if (m.display && m.display.destroy) m.display.destroy(); });
+  this.markers = this.markers.filter(m => !(m.r === r && m.c === c));
+
+  const mx = this.boardX + c * this.tileSize + this.tileSize / 2;
+  const my = r * this.tileSize + this.tileSize / 2;
+  const txt = this.add.text(mx, my, symbol, {
+    fontSize: "26px",
+    color: Phaser.Display.Color.IntegerToColor(color).rgba
+  }).setOrigin(0.5).setDepth(12);
+  txt.setAlpha(0.85);
+
+  // fade animation
+  this.tweens.add({ targets: txt, alpha: 0, duration: this.markerDurationTurns * 800, onComplete: () => txt.destroy() });
+
+  this.markers.push({ r, c, symbol, color, turnPlaced: this.turnNumber, display: txt });
+  this.tileMeta[key].markers.push({ symbol, color, turn: this.turnNumber });
+}
+
 
   decayMarkers() {
     // destroy markers older than markerDurationTurns
