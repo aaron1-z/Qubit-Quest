@@ -1286,25 +1286,14 @@ endGame(win) {
   btn.on("pointerdown", () => {
   btn.disableInteractive();
   this.playTone(600, 0.15, 0.1);
+  this.log("🔁 Restarting Quantum Field...");
 
-  const restartingText = this.add.text(
-    this.boardX + this.boardW / 2,
-    this.canvasH / 2 + 90,
-    "Restarting Quantum Simulation...",
-    { fontSize: "16px", color: "#9ff" }
-  ).setOrigin(0.5).setDepth(306);
-
-  this.tweens.add({
-    targets: [overlay, text, btn, restartingText],
-    alpha: 0,
-    duration: 800,
-    onComplete: () => {
-      this.time.delayedCall(100, () => {
-        this.scene.resume();
-        this.scene.restart();
-        this._ending = false;
-      });
-    }
+  // Smooth fade + direct restart
+  this.cameras.main.fadeOut(600, 0, 0, 0);
+  this.time.delayedCall(600, () => {
+    this.scene.stop();
+    this.scene.restart();
+    this._ending = false;
   });
 });
 
