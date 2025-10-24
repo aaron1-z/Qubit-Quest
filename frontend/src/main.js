@@ -732,6 +732,13 @@ this.tweens.add({
     this.playTone(260, 0.1, 0.15);
   }
 
+  // 👇 bonus passive energy regain for successful measurement
+if (success) {
+  this.energy = Math.min(4, this.energy + 1);
+  this.log("⚛️ Energy harmonized through coherent collapse (+1).");
+}
+
+
   this.updateUI();
 
   if (this.coherence <= 0 || this.lives <= 0) {
@@ -1230,7 +1237,13 @@ showFloatingText(text, x, y, color = "#fff") {
 }
 
   // -------------------- cleanup and end --------------------
-  restart() { this.scene.restart(); }
+  restart() {
+  // Clean destroy lingering prompts (safety)
+  this.children.each(child => {
+    if (child.text && /click to begin/i.test(child.text)) child.destroy();
+  });
+  this.scene.restart();
+}
 
 endGame(win) {
   const msg = win
