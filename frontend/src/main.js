@@ -21,9 +21,13 @@ class StartScene extends Phaser.Scene {
   preload() {}
 
   create() {
-    const { width, height } = this.scale;
-    this.cameras.main.setBackgroundColor("#05020a");
+  const { width, height } = this.scale; 
+  this.cameras.main.setBackgroundColor("#05020a");
+  this.cameras.main.fadeIn(600, 0, 0, 0);
 
+    this.cameras.main.setBackgroundColor("#05020a");
+    this.cameras.main.fadeIn(600, 0, 0, 0);
+   
     // Animated glow
     const glow = this.add.graphics();
     let glowPhase = 0;
@@ -66,13 +70,19 @@ class StartScene extends Phaser.Scene {
     startBtn.on("pointerout", () => startBtn.setStyle({ backgroundColor: "#9ff" }));
 
     // On click → start FinalScene
-    startBtn.on("pointerdown", () => {
-  this.playTone?.(440, 0.2, 0.1); // safe dynamic tone
+   startBtn.on("pointerdown", () => {
+  this.playTone?.(440, 0.2, 0.1);
+
+  // Fade to black
   this.cameras.main.fadeOut(600, 0, 0, 0);
-  this.time.delayedCall(600, () => {
+
+  // When fade completes, start FinalScene.
+  // FinalScene.create() already does a fadeIn().
+  this.cameras.main.once('camerafadeoutcomplete', () => {
     this.scene.start("FinalScene");
   });
 });
+
 
 
     // Optional: play a soft intro tone
@@ -92,6 +102,7 @@ class StartScene extends Phaser.Scene {
 class FinalScene extends Phaser.Scene {
   constructor() {
     super("FinalScene");
+    this.skipTutorial = false;
 
     // Board config
     this.gridW = 8;
@@ -108,97 +119,109 @@ class FinalScene extends Phaser.Scene {
 
   preload() {}
 
-  create() {
-    // resume audio after gesture (Chrome)
-    this.input.once("pointerdown", () => { try { if (this.sound.context.state === "suspended") this.sound.context.resume(); } catch(e){}});
-    this.input.keyboard.once("keydown", () => { try { if (this.sound.context.state === "suspended") this.sound.context.resume(); } catch(e){} });
+create() {
+  // resume audio after gesture (Chrome)
+  this.input.once("pointerdown", () => { 
+    try { if (this.sound.context.state === "suspended") this.sound.context.resume(); } catch(e){} 
+  });
+  this.input.keyboard.once("keydown", () => { 
+    try { if (this.sound.context.state === "suspended") this.sound.context.resume(); } catch(e){} 
+  });
 
-    // layout and centering
-    const minWidth = this.boardW + this.panelW + 80;
-    const w = Math.max(minWidth, Math.min(window.innerWidth, 1200));
-    this.scale.resize(w, this.canvasH);
-    this.totalW = this.boardW + this.panelW;
-    this.offsetX = Math.round((this.scale.width - this.totalW) / 2);
-    this.boardX = this.offsetX;
-    this.panelX = this.offsetX + this.boardW;
+  // layout and centering
+  const minWidth = this.boardW + this.panelW + 80;
+  const w = Math.max(minWidth, Math.min(window.innerWidth, 1200));
+  this.scale.resize(w, this.canvasH);
+  this.totalW = this.boardW + this.panelW;
+  this.offsetX = Math.round((this.scale.width - this.totalW) / 2);
+  this.boardX = this.offsetX;
+  this.panelX = this.offsetX + this.boardW;
 
-    // core game state
-    this.turnBased = true;
-    this.turnNumber = 1;
-    this.actionUsedThisTurn = false;
-    this.row = 0;
-    this.lives = 3;
-    this.score = 0;
-    this.streak = 0;
-    this.energy = 4;
-    this.coherence = 100;
-    this.currentStartPos = 0;
-    this.entangleSelection = null;
+  // core game state
+  this.turnBased = true;
+  this.turnNumber = 1;
+  this.actionUsedThisTurn = false;
+  this.row = 0;
+  this.lives = 3;
+  this.score = 0;
+  this.streak = 0;
+  this.energy = 4;
+  this.coherence = 100;
+  this.currentStartPos = 0;
+  this.entangleSelection = null;
 
-    // data layers
-    this.tileMeta = {};   // per tile: type, linked, markers array, memory value
-    this.markers = [];    // list of active markers {r,c,symbol,color,turnPlaced}
-    this.memory = Array(this.gridW).fill(0); // memory per column (decays by turn)
-    this.recentActions = [];
+  // data layers
+  this.tileMeta = {};   
+  this.markers = [];    
+  this.memory = Array(this.gridW).fill(0); 
+  this.recentActions = [];
 
-    // quantum engine
-    this.quantumEngine = new QuantumEngine(this.gridW, 0);
+  // quantum engine
+  this.quantumEngine = new QuantumEngine(this.gridW, 0);
 
-    // visuals
-    this.cameras.main.setBackgroundColor(0x05020a);
-    this.createBackground();
-    this.createWaveCanvas();
-    this.createParticleTexture();
+  // visuals
+  this.cameras.main.setBackgroundColor(0x05020a);
+  this.createBackground();
+  this.createWaveCanvas();
+  this.createParticleTexture();
 
-    // grid + tiles
-    this.tiles = [];
-    this.createGrid();
-    this.spawnInitialSpecialTiles();
+  // grid + tiles
+  this.tiles = [];
+  this.createGrid();
+  this.spawnInitialSpecialTiles();
 
-    // players visuals (one black, one pink)
-    this.createPlayers();
-    this.createTrails();
+  // players visuals (one black, one pink)
+  this.createPlayers();
+  this.createTrails();
 
-    // UI panel & overlay
-    this.createUI();
+  // UI panel & overlay
+  this.createUI();
 
-    // viz
-    this.vizGraphics = this.add.graphics().setDepth(8);
+  // viz
+  this.vizGraphics = this.add.graphics().setDepth(8);
 
-    // log overlay (bottom) hidden by default
-    this.createLogOverlay();
+  // log overlay (bottom)
+  this.createLogOverlay();
 
-    // input
-    this.cursors = this.input.keyboard.createCursorKeys();
-    this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
-    this.keyH = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H);
-    this.keyQ = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
-    this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-    this.keyT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.T);
-    this.keyL = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L);
-    this.input.keyboard.on("keydown-R", ()=> this.restart());
+  // input
+  this.cursors = this.input.keyboard.createCursorKeys();
+  this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+  this.keyH = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H);
+  this.keyQ = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Q);
+  this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+  this.keyT = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.T);
+  this.keyL = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L);
+  this.input.keyboard.on("keydown-R", () => this.restart());
 
-    // tile click
-    this.input.on('pointerdown', (ptr) => {
-      const px = ptr.x - this.boardX;
-      if (px >= 0 && px < this.boardW && ptr.y >= 0 && ptr.y < this.canvasH) {
-        const c = Math.floor(px / this.tileSize);
-        const r = Math.floor(ptr.y / this.tileSize);
-        this.onTileClick(r, c, ptr);
-      }
-    });
+  // tile click
+  this.input.on('pointerdown', (ptr) => {
+    const px = ptr.x - this.boardX;
+    if (px >= 0 && px < this.boardW && ptr.y >= 0 && ptr.y < this.canvasH) {
+      const c = Math.floor(px / this.tileSize);
+      const r = Math.floor(ptr.y / this.tileSize);
+      this.onTileClick(r, c, ptr);
+    }
+  });
 
-    // compute initial pattern from fallback state
-    this.quantumEngine.resetRow(0);
-    this.generatePatternFromProbs(this.quantumEngine.state, this.patternLen);
+  // compute initial pattern
+  this.quantumEngine.resetRow(0);
+  this.generatePatternFromProbs(this.quantumEngine.state, this.patternLen);
 
-    // render
-    this.renderRowLocal();
-    this.updateUI();
-    this.log("Welcome to Qubit Quest — Fold the pattern coherently.");
-    this.showInteractiveTutorial();
+  // render & update
+  this.renderRowLocal();
+  this.updateUI();
+  this.log("Welcome to Qubit Quest — Fold the pattern coherently.");
+// Handle tutorial skip on restart
+const data = this.sys.settings.data || {};
+this.skipTutorial = data.skipTutorial || false;
 
-  }
+if (!this.skipTutorial) {
+  this.showInteractiveTutorial();
+}
+
+  // ✅ Move fade-in here (AFTER setup)
+  this.cameras.main.fadeIn(600, 0, 0, 0);
+}
 
   showTutorialOverlay() {
   const overlay = this.add.rectangle(
@@ -1238,11 +1261,13 @@ showFloatingText(text, x, y, color = "#fff") {
 
   // -------------------- cleanup and end --------------------
   restart() {
-  // Clean destroy lingering prompts (safety)
   this.children.each(child => {
-    if (child.text && /click to begin/i.test(child.text)) child.destroy();
+    if (child && child.destroy && child !== this.cameras.main) {
+      child.destroy();
+    }
   });
-  this.scene.restart();
+  this.scene.stop();
+  this.scene.start("FinalScene");
 }
 
 endGame(win) {
@@ -1253,8 +1278,7 @@ endGame(win) {
   if (this._ending) return;
   this._ending = true;
 
-  this.scene.pause();
-
+  // --- Overlay blocking everything
   const overlay = this.add.rectangle(
     this.boardX + this.boardW / 2,
     this.canvasH / 2,
@@ -1262,15 +1286,17 @@ endGame(win) {
     this.canvasH,
     0x000000,
     0.85
-  ).setDepth(300).setInteractive();
+  ).setDepth(300);
 
-  const text = this.add.text(
+  // --- Message text
+  this.add.text(
     this.boardX + this.boardW / 2,
     this.canvasH / 2 - 30,
     msg,
     { fontSize: "28px", color: "#fff", fontStyle: "bold" }
   ).setOrigin(0.5).setDepth(301);
 
+  // --- Celebration / failure particles
   for (let i = 0; i < 60; i++) {
     const px = this.add.circle(
       this.boardX + Phaser.Math.Between(0, this.boardW),
@@ -1288,6 +1314,7 @@ endGame(win) {
     });
   }
 
+  // --- Restart button
   const btn = this.add.text(
     this.boardX + this.boardW / 2,
     this.canvasH / 2 + 40,
@@ -1306,21 +1333,46 @@ endGame(win) {
   btn.on("pointerover", () => btn.setStyle({ backgroundColor: "#bff" }));
   btn.on("pointerout", () => btn.setStyle({ backgroundColor: "#9ff" }));
 
-  btn.on("pointerdown", () => {
+  
+const restartGame = () => {
   btn.disableInteractive();
   this.playTone(600, 0.15, 0.1);
-  this.log("🔁 Restarting Quantum Field...");
+  this.log("🔁 Quantum Field rebooting...");
 
-  // Smooth fade + direct restart
+  // Fade out smoothly
   this.cameras.main.fadeOut(600, 0, 0, 0);
-  this.time.delayedCall(600, () => {
-    this.scene.stop();
-    this.scene.restart();
-    this._ending = false;
+
+  this.cameras.main.once("camerafadeoutcomplete", () => {
+    // Restart the scene with tutorial skipped
+    this.scene.start("FinalScene", { skipTutorial: true });
+  });
+};
+
+const menuBtn = this.add.text(
+  this.boardX + this.boardW / 2,
+  this.canvasH / 2 + 90,
+  "🏠 Return to Main Menu",
+  {
+    fontSize: "20px",
+    color: "#000",
+    backgroundColor: "#9ff",
+    padding: { x: 14, y: 8 }
+  }
+).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(305);
+
+menuBtn.on("pointerdown", () => {
+  this.playTone(400, 0.15, 0.1);
+  this.cameras.main.fadeOut(600, 0, 0, 0);
+  this.cameras.main.once("camerafadeoutcomplete", () => {
+    this.scene.start("StartScene");
   });
 });
 
+console.log("Restart triggered → fading out...");
 
+  btn.on("pointerdown", restartGame);
+
+  // --- Subtle overlay breathing
   this.tweens.add({
     targets: overlay,
     alpha: { from: 0.85, to: 0.92 },
@@ -1330,7 +1382,6 @@ endGame(win) {
     ease: "Sine.easeInOut"
   });
 }
-
 }
 
 const config = {
