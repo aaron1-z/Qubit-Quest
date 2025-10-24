@@ -425,11 +425,12 @@ showInteractiveTutorial() {
   const typeNextLine = () => {
     if (currentLine >= lines.length) {
       overlay.setInteractive().once('pointerdown', () => {
-        overlay.destroy();
-        textObjects.forEach(t => t.destroy());
-        this.playTone(640, 0.1, 0.1);
-        this.log("Tutorial closed. Manipulate the field wisely!");
-      });
+  overlay.destroy();
+  textObjects.forEach(t => t.destroy());
+  if (clickText) clickText.destroy(); // 🧩 destroy the prompt
+  this.playTone(640, 0.1, 0.1);
+  this.log("Tutorial closed. Manipulate the field wisely!");
+});
       // Add “Click to continue” pulse
       const clickText = this.add.text(
         this.boardX + this.boardW / 2,
