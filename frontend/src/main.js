@@ -1195,18 +1195,19 @@ flashEnergyWarning() {
     this.boardX + this.boardW / 2,
     40,
     "⚡ OUT OF ENERGY ⚡",
-    { fontSize: "22px", color: "#ff6688" }
-  )
-    .setOrigin(0.5)
-    .setDepth(200);
+    { fontSize: "22px", color: "#ff6688", fontStyle: "bold" }
+  ).setOrigin(0.5).setDepth(200);
 
   this.tweens.add({
     targets: warn,
-    alpha: 0,
+    alpha: { from: 1, to: 0 },
     y: 10,
-    duration: 800,
+    duration: 1000,
     onComplete: () => warn.destroy()
   });
+
+  // Flash the screen slightly red
+  this.cameras.main.flash(150, 255, 40, 60);
 
   this.playTone(160, 0.1, 0.15);
 }
