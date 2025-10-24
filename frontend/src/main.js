@@ -891,7 +891,16 @@ this.tweens.add({
     this.log(`End of turn ${this.turnNumber}. Environment evolves...`);
     this.turnNumber++;
     // decay coherence more aggressively for difficulty
-    this.coherence -= (3 + Math.floor(this.turnNumber / 7));
+   // ♻️ Energy regeneration
+const prevEnergy = this.energy;
+this.energy = Math.min(4, this.energy + 1);
+if (this.energy > prevEnergy) {
+  this.log("⚡ Energy cell recharged by 1.");
+  this.playTone(480, 0.08, 0.04);
+}
+
+// decay coherence more aggressively for difficulty
+this.coherence -= (3 + Math.floor(this.turnNumber / 7));
     // decoFields effect
     for (const k in this.tileMeta) {
       const meta = this.tileMeta[k];
