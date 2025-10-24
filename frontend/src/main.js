@@ -872,17 +872,26 @@ this.tweens.add({
     this.updatePatternUI();
   }
 
-  updatePatternUI() {
-    for (let i=0;i<this.patternLen;i++) {
-      const rect = this.patternIcons[i];
-      const col = this.targetPattern[i];
-      if (i < this.patternIndex) rect.setFillStyle(0x44ff88);
-      else if (i === this.patternIndex) rect.setFillStyle(0xffff66);
-      else rect.setFillStyle(0x222222);
-      if (rect._label) rect._label.destroy();
-      rect._label = this.add.text(rect.x - 8, rect.y - 8, `${this.targetPattern[i]}`, { fontSize: "14px", color:"#000" }).setDepth(11);
-    }
+ updatePatternUI() {
+  for (let i = 0; i < this.patternLen; i++) {
+    const rect = this.patternIcons[i];
+    const col = this.targetPattern[i];
+
+    if (i < this.patternIndex) rect.setFillStyle(0x44ff88);
+    else if (i === this.patternIndex) rect.setFillStyle(0xffff66);
+    else rect.setFillStyle(0x222222);
+
+    // ✅ destroy previous label safely
+    if (rect._label && rect._label.destroy) rect._label.destroy();
+
+    rect._label = this.add.text(
+      rect.x - 8,
+      rect.y - 8,
+      `${col}`,
+      { fontSize: "14px", color: "#000" }
+    ).setDepth(11);
   }
+}
 
   // -------------------- End-turn / environment --------------------
   endTurnIfActionUsed() { this.endTurn(); }
