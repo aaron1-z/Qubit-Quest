@@ -3,7 +3,7 @@ import { runQWalk } from "./api.js";
 import { QuantumEngine } from "./quantum/QuantumEngine.js";
 
 /*
-Final Qubit Quest — Turn-based Strategic Puzzle (full-feature)
+Qubit Quest — Turn-based Strategic Puzzle
 Features:
  - On-board markers for H/Q/E/M/Entangle (fade after N turns)
  - Quantum memory layer (fading afterglow influencing tile tint)
@@ -28,7 +28,7 @@ class StartScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor("#05020a");
     this.cameras.main.fadeIn(600, 0, 0, 0);
    
-    // Animated glow
+ 
     const glow = this.add.graphics();
     let glowPhase = 0;
 
@@ -44,7 +44,7 @@ class StartScene extends Phaser.Scene {
       },
     });
 
-    // Title
+
     const title = this.add.text(width / 2, height / 2 - 120, "QUBIT QUEST", {
       fontSize: "48px",
       color: "#9ff",
@@ -52,13 +52,13 @@ class StartScene extends Phaser.Scene {
       fontStyle: "bold",
     }).setOrigin(0.5);
 
-    // Subtitle
+    
     this.add.text(width / 2, height / 2 - 60, "A Quantum Field Simulation Puzzle", {
       fontSize: "18px",
       color: "#bdf",
     }).setOrigin(0.5);
 
-    // Button
+   
     const startBtn = this.add.text(width / 2, height / 2 + 60, "▶ Start Simulation", {
       fontSize: "24px",
       color: "#000",
@@ -69,15 +69,14 @@ class StartScene extends Phaser.Scene {
     startBtn.on("pointerover", () => startBtn.setStyle({ backgroundColor: "#bff" }));
     startBtn.on("pointerout", () => startBtn.setStyle({ backgroundColor: "#9ff" }));
 
-    // On click → start FinalScene
+
    startBtn.on("pointerdown", () => {
   this.playTone?.(440, 0.2, 0.1);
 
-  // Fade to black
+  
   this.cameras.main.fadeOut(600, 0, 0, 0);
 
-  // When fade completes, start FinalScene.
-  // FinalScene.create() already does a fadeIn().
+ 
   this.cameras.main.once('camerafadeoutcomplete', () => {
     this.scene.start("FinalScene");
   });
@@ -85,7 +84,7 @@ class StartScene extends Phaser.Scene {
 
 
 
-    // Optional: play a soft intro tone
+   
     try {
       const ctx = this.sound.context;
       const o = ctx.createOscillator();
@@ -104,7 +103,6 @@ class FinalScene extends Phaser.Scene {
     super("FinalScene");
     this.skipTutorial = false;
 
-    // Board config
     this.gridW = 8;
     this.tileSize = 80;
     this.boardW = this.gridW * this.tileSize;
@@ -112,15 +110,15 @@ class FinalScene extends Phaser.Scene {
     this.canvasH = 640;
     this.patternLen = 4;
 
-    // Action fade durations
-    this.markerDurationTurns = 3; // markers show for 3 turns
-    this.logPeekMs = 2200; // show log overlay after each action
+    
+    this.markerDurationTurns = 3; 
+    this.logPeekMs = 2200; 
   }
 
   preload() {}
 
 create() {
-  // resume audio after gesture (Chrome)
+  
   this.input.once("pointerdown", () => { 
     try { if (this.sound.context.state === "suspended") this.sound.context.resume(); } catch(e){} 
   });
@@ -128,7 +126,7 @@ create() {
     try { if (this.sound.context.state === "suspended") this.sound.context.resume(); } catch(e){} 
   });
 
-  // layout and centering
+
   const minWidth = this.boardW + this.panelW + 80;
   const w = Math.max(minWidth, Math.min(window.innerWidth, 1200));
   this.scale.resize(w, this.canvasH);
@@ -137,7 +135,6 @@ create() {
   this.boardX = this.offsetX;
   this.panelX = this.offsetX + this.boardW;
 
-  // core game state
   this.turnBased = true;
   this.turnNumber = 1;
   this.actionUsedThisTurn = false;
@@ -150,40 +147,40 @@ create() {
   this.currentStartPos = 0;
   this.entangleSelection = null;
 
-  // data layers
+
   this.tileMeta = {};   
   this.markers = [];    
   this.memory = Array(this.gridW).fill(0); 
   this.recentActions = [];
 
-  // quantum engine
+
   this.quantumEngine = new QuantumEngine(this.gridW, 0);
 
-  // visuals
+
   this.cameras.main.setBackgroundColor(0x05020a);
   this.createBackground();
   this.createWaveCanvas();
   this.createParticleTexture();
 
-  // grid + tiles
+
   this.tiles = [];
   this.createGrid();
   this.spawnInitialSpecialTiles();
 
-  // players visuals (one black, one pink)
+
   this.createPlayers();
   this.createTrails();
 
-  // UI panel & overlay
+
   this.createUI();
 
-  // viz
+
   this.vizGraphics = this.add.graphics().setDepth(8);
 
-  // log overlay (bottom)
+
   this.createLogOverlay();
 
-  // input
+
   this.cursors = this.input.keyboard.createCursorKeys();
   this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
   this.keyH = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.H);
@@ -193,7 +190,7 @@ create() {
   this.keyL = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.L);
   this.input.keyboard.on("keydown-R", () => this.restart());
 
-  // tile click
+
   this.input.on('pointerdown', (ptr) => {
     const px = ptr.x - this.boardX;
     if (px >= 0 && px < this.boardW && ptr.y >= 0 && ptr.y < this.canvasH) {
@@ -203,15 +200,15 @@ create() {
     }
   });
 
-  // compute initial pattern
+
   this.quantumEngine.resetRow(0);
   this.generatePatternFromProbs(this.quantumEngine.state, this.patternLen);
 
-  // render & update
+
   this.renderRowLocal();
   this.updateUI();
   this.log("Welcome to Qubit Quest — Fold the pattern coherently.");
-// Handle tutorial skip on restart
+
 const data = this.sys.settings.data || {};
 this.skipTutorial = data.skipTutorial || false;
 
@@ -219,7 +216,7 @@ if (!this.skipTutorial) {
   this.showInteractiveTutorial();
 }
 
-  // ✅ Move fade-in here (AFTER setup)
+
   this.cameras.main.fadeIn(600, 0, 0, 0);
 }
 
@@ -251,7 +248,7 @@ if (!this.skipTutorial) {
     this.log("Tutorial dismissed. Begin manipulating the field.");
   });
 }
-  // -------------------- Visual layers --------------------
+ 
   createBackground() {
     const w = this.scale.width, h = this.canvasH;
     const canvas = this.textures.createCanvas('bg', w, h).source[0].image;
@@ -262,7 +259,7 @@ if (!this.skipTutorial) {
     this.textures.addCanvas('bg', canvas);
     this.add.image(w/2,h/2,'bg').setDepth(-10);
 
-    // scanlines
+   
     const scan = this.textures.createCanvas('scan', w, h).source[0].image;
     const sc = scan.getContext('2d');
     for (let y=0; y<h; y+=6) { sc.fillStyle = y%12===0 ? 'rgba(255,255,255,0.01)' : 'rgba(255,255,255,0.004)'; sc.fillRect(0,y,w,1); }
@@ -283,7 +280,7 @@ if (!this.skipTutorial) {
     g.fillStyle(0xffffff,1); g.fillRect(0,0,2,2); g.generateTexture('px',2,2); g.destroy();
   }
 
-  // -------------------- Grid and tiles --------------------
+  
   createGrid() {
     for (let r=0;r<this.gridW;r++) {
       this.tiles[r] = [];
@@ -301,13 +298,13 @@ if (!this.skipTutorial) {
 
   spawnInitialSpecialTiles() {
     const rand = () => Math.floor(Math.random()*this.gridW);
-    // 1-2 photon gates early, some decofields
+    
     for (let i=0;i<2;i++) this.setTileType(0, rand(), 'photonGate');
     for (let i=0;i<3;i++) this.setTileType(1, rand(), 'decoField');
-    // portal pair
+    
     let a = rand(), b = rand();
     if (a !== b) { this.setTileType(2,a,'portal'); this.setTileType(3,b,'portal'); this.linkPortal(2,a,3,b); }
-    // misc sprinkling
+    
     for (let r=0;r<2;r++){
       for (let t=0;t<2;t++){
         const c = rand();
@@ -345,7 +342,7 @@ if (!this.skipTutorial) {
     this.tileMeta[`${r2}_${c2}`].linked = { r:r1, c:c1, kind:'entangle' };
   }
 
-  // -------------------- Players & trails --------------------
+
   createPlayers() {
     this.playerA = this.add.circle(this.boardX + 40, 40, 18, 0x000000).setDepth(6);
     this.playerB = this.add.circle(this.boardX + 40, 600, 18, 0xff66cc).setDepth(6);
@@ -358,7 +355,7 @@ if (!this.skipTutorial) {
     this.add.particles(0,0,'px', { follow:this.playerB, lifespan:420, scale:{start:0.35,end:0}, tint:0xff66cc, speed:0, frequency:50 });
   }
 
-  // -------------------- UI & overlay --------------------
+
   createUI() {
     const px = this.panelX;
     this.livesText = this.add.text(px+12, 8, "", { fontSize:"16px", color:"#00ff88" }).setDepth(9);
@@ -368,7 +365,7 @@ if (!this.skipTutorial) {
     this.turnText = this.add.text(px+12, 88, "", { fontSize:"14px", color:"#99aaff" }).setDepth(9);
     this.modeText = this.add.text(px+12, 108, "Mode: TURN-BASED (T toggles)", { fontSize:"12px", color:"#f8a" }).setDepth(9);
 
-    // pattern objective mini display
+ 
     this.add.text(px+12, 132, "Pattern Objective", { fontSize:"13px", color:"#9ff" }).setDepth(9);
     this.patternIcons = [];
     for (let i=0;i<this.patternLen;i++) {
@@ -378,7 +375,7 @@ if (!this.skipTutorial) {
       this.patternIcons.push(rect);
     }
 
-    // Recent actions (scrolling - update text lines)
+   
     this.add.text(px+12, 220, "Recent Actions", { fontSize:"13px", color:"#9ff" }).setDepth(9);
     this.recentActionTexts = [];
     for (let i=0;i<8;i++) {
@@ -386,13 +383,13 @@ if (!this.skipTutorial) {
       this.recentActionTexts.push(t);
     }
 
-    // end turn button
+    
     this.endTurnBtn = this.add.text(px+12, 520, "End Turn", { fontSize:"16px", color:"#000", backgroundColor:"#9ff", padding:{x:8,y:6} }).setInteractive().setDepth(9);
     this.endTurnBtn.on('pointerdown', ()=> this.endTurn());
   }
 
   createLogOverlay() {
-    // overlay rectangle semi-transparent bottom panel
+    
     this.logOpen = false;
     const w = this.totalW;
     const h = 180;
@@ -401,13 +398,12 @@ if (!this.skipTutorial) {
     this.logText = this.add.text(this.boardX + 14, this.canvasH - h + 12, "", { fontSize:"12px", color:"#cde", wordWrap:{ width:this.boardW - 28 } }).setDepth(62);
     this.logGroup.add([bg, this.logText]);
     this.logGroup.setAlpha(0);
-    // toggle key L
     this.input.keyboard.on('keydown-L', ()=> {
       this.showLogOverlay(!this.logOpen, 220);
     });
   }
 showInteractiveTutorial() {
-  // dark overlay
+  
   const overlay = this.add.rectangle(
     this.boardX + this.boardW / 2,
     this.canvasH / 2,
@@ -417,11 +413,11 @@ showInteractiveTutorial() {
     0.85
   ).setDepth(500);
 
-  // Lines of tutorial text
+ 
   const lines = [
-    "🧠 Welcome to Qubit Quest!",
+    " Welcome to Qubit Quest!",
     "",
-    "🎯 Goal: Collapse columns in the order of the Pattern Objective.",
+    "Goal: Collapse columns in the order of the Pattern Objective.",
     "",
     "Controls:",
     "• Click a column → select it.",
@@ -441,20 +437,20 @@ showInteractiveTutorial() {
   const textObjects = [];
   let currentLine = 0;
   let currentChar = 0;
-  const lineDelay = 600; // delay between lines
-  const charDelay = 22;  // speed of typewriter effect per character
+  const lineDelay = 600; 
+  const charDelay = 22; 
 
-  // “Typewriter” animation
+  
   const typeNextLine = () => {
     if (currentLine >= lines.length) {
       overlay.setInteractive().once('pointerdown', () => {
   overlay.destroy();
   textObjects.forEach(t => t.destroy());
-  if (clickText) clickText.destroy(); // 🧩 destroy the prompt
+  if (clickText) clickText.destroy(); 
   this.playTone(640, 0.1, 0.1);
   this.log("Tutorial closed. Manipulate the field wisely!");
 });
-      // Add “Click to continue” pulse
+     
       const clickText = this.add.text(
         this.boardX + this.boardW / 2,
         this.canvasH - 80,
@@ -496,7 +492,7 @@ showInteractiveTutorial() {
 
     addChar();
   };
-  // Subtle glow flicker before tutorial starts
+  
 this.tweens.add({
   targets: overlay,
   alpha: { from: 0.6, to: 0.85 },
@@ -506,7 +502,7 @@ this.tweens.add({
   ease: 'Sine.easeInOut'
 });
 
-  typeNextLine(); // Start typing sequence
+  typeNextLine();
 }
 
   showLogOverlay(show=true, duration=220) {
@@ -521,13 +517,11 @@ this.tweens.add({
   }
 
   autoPeekLog() {
-    // show overlay for a short time after each action
     this.showLogOverlay(true, 160);
     if (this._logTimer) clearTimeout(this._logTimer);
     this._logTimer = setTimeout(()=> this.showLogOverlay(false, 400), this.logPeekMs);
   }
 
-  // -------------------- Input handlers --------------------
   onTileClick(r,c, ptr) {
     const shift = ptr.event.shiftKey;
     if (shift) {
@@ -551,11 +545,10 @@ this.tweens.add({
       return;
     }
 
-    // select column for Q/H operations
+  
     this.selectedCol = c;
     this.recordAction('Select', `col ${c}`);
     this.log(`Selected column ${c}. Press Q (Phase) or H (Local H) to operate.`);
-    // selector visual
     if (this.selector) this.selector.destroy();
     this.selector = this.add.rectangle(this.boardX + c*this.tileSize + this.tileSize/2, 12, this.tileSize-12, 8, 0xffff88).setDepth(9);
     this.time.delayedCall(800, ()=> { if (this.selector) this.selector.destroy(); });
@@ -567,7 +560,6 @@ this.tweens.add({
     this.linkEntangleTiles(r1,c1,r2,c2);
     this.tiles[r1][c1].setStrokeStyle(4, 0xaa66ff);
     this.tiles[r2][c2].setStrokeStyle(4, 0xaa66ff);
-    // visual beam between two tiles
     const x1 = this.boardX + c1*this.tileSize + this.tileSize/2, y1 = r1*this.tileSize + this.tileSize/2;
     const x2 = this.boardX + c2*this.tileSize + this.tileSize/2, y2 = r2*this.tileSize + this.tileSize/2;
     const beam = this.add.line(0,0,x1,y1,x2,y2,0xff66ff).setOrigin(0).setLineWidth(3).setDepth(7);
@@ -581,7 +573,6 @@ this.tweens.add({
     if (this.turnBased) this.endTurnIfActionUsed();
   }
 
-  // -------------------- Actions (Q/H/E/M) --------------------
  async applyPhase() {
   if (this._ending) return;
   if (this.energy < 1) {
@@ -600,17 +591,12 @@ this.tweens.add({
   this.log(`Applied Phase gate to column ${c}.`);
   this.recordAction("Q", `col ${c}`);
 
-  // Subtle amplitude phase shift (stabilizes state)
   const factor = 0.88 + Math.random() * 0.1;
   this.quantumEngine.state[c] *= factor;
-
-  // Re-normalize
   const s = this.quantumEngine.state.reduce((a, b) => a + b, 0) || 1;
   this.quantumEngine.state = this.quantumEngine.state.map(v => v / s);
-
-  // Phase reduces coherence slightly but improves alignment
   this.coherence = Math.max(0, this.coherence - 2 + Math.random() * 1.5);
-  this.score += 5; // small reward for stability tuning
+  this.score += 5;
 
   this.visualizeProbs(this.quantumEngine.state);
   this.addMarker(this.row, c, "Q", 0xffcc00);
@@ -638,15 +624,11 @@ this.tweens.add({
   const left = (c - 1 + this.gridW) % this.gridW;
   const right = (c + 1) % this.gridW;
   const arr = this.quantumEngine.state.slice();
-
-  // Local interference: balance nearby amplitudes
   const avg = (arr[left] + arr[c] + arr[right]) / 3;
   arr[c] = (arr[c] + avg) / 2;
 
   const s = arr.reduce((a, b) => a + b, 0) || 1;
   this.quantumEngine.state = arr.map(v => v / s);
-
-  // Hadamard boosts coherence (if stable)
   if (Math.random() > 0.2) {
     this.coherence = Math.min(100, this.coherence + 4);
     this.log(`Local Hadamard at column ${c} increased coherence.`);
@@ -655,7 +637,7 @@ this.tweens.add({
     this.log(`Hadamard misalignment caused coherence loss.`);
   }
 
-  this.score += 10; // small reward
+  this.score += 10;
   this.visualizeProbs(this.quantumEngine.state);
   this.addMarker(this.row, c, "H", 0x44ffee);
   this.playTone(980, 0.11, 0.08);
@@ -701,25 +683,20 @@ this.tweens.add({
  async measure() {
   if (this._ending) return;
 
-  // Cannot measure with no energy
   if (this.energy <= 0) {
     this.flashEnergyWarning();
     return;
   }
 
-  // Deduct small energy cost for measuring
   this.energy -= 1;
 
   this.log("🔍 Measuring quantum field...");
   this.recordAction('M', `row ${this.row}`);
-
-  // Measurement success depends on coherence
   const coherenceRisk = Math.max(0, 60 - this.coherence);
   const failChance = coherenceRisk / 100;
 
   this.cameras.main.flash(150, 100, 200, 255);
 
-  // Failed measurement (decoherence)
   if (Math.random() < failChance) {
     this.coherence = Math.max(0, this.coherence - 20);
     this.lives -= 1;
@@ -735,14 +712,14 @@ this.tweens.add({
     return;
   }
 
-  // Successful measurement — fetch quantum walk
+
   const res = await runQWalk({ n_positions: this.gridW, steps: 1, coin: 'hadamard', start_pos: this.currentStartPos, custom_coin_angles: [] });
   const probs = res && !res.error ? res.probabilities : this.quantumEngine.state;
   const idx = this.weightedRandom(probs);
   this.addMarker(this.row, idx, 'M', 0xffffff);
   this.playTone(300, 0.08, 0.08);
 
-  // Check pattern coherence
+
   const success = this.checkPattern(idx, true);
   if (success) {
     this.score += 50;
@@ -755,7 +732,6 @@ this.tweens.add({
     this.playTone(260, 0.1, 0.15);
   }
 
-  // 👇 bonus passive energy regain for successful measurement
 if (success) {
   this.energy = Math.min(4, this.energy + 1);
   this.log("⚛️ Energy harmonized through coherent collapse (+1).");
@@ -779,9 +755,8 @@ if (success) {
   if (this.turnBased) this.endTurnIfActionUsed();
 }
 
-  // -------------------- Collapse & consequences --------------------
+
   handleCollapse(col, coherent) {
-    // animate players to collapse column
     const tx = this.boardX + col*this.tileSize + this.tileSize/2;
     this.tweens.add({ targets: [this.playerA, this.playerB], x: tx, duration: 300, ease:'Sine.easeInOut' });
 
@@ -792,7 +767,6 @@ if (success) {
       this.coherence = Math.min(100, this.coherence + 6);
       this.flashTile(this.row, col, 0x88ff88);
       this.log(`Coherent collapse: +${gain} points (streak ${this.streak}).`);
-      // memory + pattern check
       this.memory[col] += 0.28;
       this.checkPattern(col, true);
     } else {
@@ -827,12 +801,10 @@ if (success) {
       this.tweens.add({ targets:px, alpha:0, duration:380, onComplete: ()=> px.destroy() });
     }
   }
-
-  // -------------------- Markers and Memory --------------------
   addMarker(r, c, symbol, color) {
   const key = `${r}_${c}`;
   const existing = this.markers.filter(m => m.r === r && m.c === c);
-  // remove older ones first
+
   existing.forEach(m => { if (m.display && m.display.destroy) m.display.destroy(); });
   this.markers = this.markers.filter(m => !(m.r === r && m.c === c));
 
@@ -844,7 +816,6 @@ if (success) {
   }).setOrigin(0.5).setDepth(12);
   txt.setAlpha(0.85);
 
-  // fade animation
   this.tweens.add({ targets: txt, alpha: 0, duration: this.markerDurationTurns * 800, onComplete: () => txt.destroy() });
 
   this.markers.push({ r, c, symbol, color, turnPlaced: this.turnNumber, display: txt });
@@ -853,7 +824,6 @@ if (success) {
 
 
   decayMarkers() {
-    // destroy markers older than markerDurationTurns
     const keep = [];
     for (const m of this.markers) {
       if (this.turnNumber - m.turnPlaced >= this.markerDurationTurns) {
@@ -861,18 +831,15 @@ if (success) {
       } else keep.push(m);
     }
     this.markers = keep;
-    // also decay memory layer slightly each turn
     for (let i=0;i<this.memory.length;i++) this.memory[i] = Math.max(0, this.memory[i] - 0.08);
   }
 
-  // -------------------- Pattern objective --------------------
   generatePatternFromProbs(probs,len) {
     const idxs = probs.map((p,i)=>({p,i})).sort((a,b)=>b.p - a.p).slice(0, Math.min(len+1, probs.length)).map(x=>x.i);
     while (idxs.length < len) {
       const r = Math.floor(Math.random()*this.gridW);
       if (!idxs.includes(r)) idxs.push(r);
     }
-    // shuffle to make puzzle (but keep solvable)
     for (let i=idxs.length-1;i>0;i--) {
       const j = Math.floor(Math.random()*(i+1));
       [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
@@ -911,7 +878,7 @@ if (success) {
     else if (i === this.patternIndex) rect.setFillStyle(0xffff66);
     else rect.setFillStyle(0x222222);
 
-    // ✅ destroy previous label safely
+
     if (rect._label && rect._label.destroy) rect._label.destroy();
 
     rect._label = this.add.text(
@@ -923,14 +890,12 @@ if (success) {
   }
 }
 
-  // -------------------- End-turn / environment --------------------
+
   endTurnIfActionUsed() { this.endTurn(); }
 
   endTurn() {
     this.log(`End of turn ${this.turnNumber}. Environment evolves...`);
     this.turnNumber++;
-    // decay coherence more aggressively for difficulty
-   // ♻️ Energy regeneration
 const prevEnergy = this.energy;
 this.energy = Math.min(4, this.energy + 1);
 if (this.energy > prevEnergy) {
@@ -938,9 +903,7 @@ if (this.energy > prevEnergy) {
   this.playTone(480, 0.08, 0.04);
 }
 
-// decay coherence more aggressively for difficulty
 this.coherence -= (3 + Math.floor(this.turnNumber / 7));
-    // decoFields effect
     for (const k in this.tileMeta) {
       const meta = this.tileMeta[k];
       if (meta.type === 'decoField') {
@@ -949,21 +912,13 @@ this.coherence -= (3 + Math.floor(this.turnNumber / 7));
         this.log(`DecoField active at (${r},${c})`);
       }
     }
-    // photon gates small bonus
     for (const k in this.tileMeta) {
       const meta = this.tileMeta[k];
       if (meta.type === 'photonGate') this.coherence = Math.min(100, this.coherence + 0.6);
     }
-
-    // random event
     if (Math.random() < 0.34) this.triggerRandomEvent();
-
-    // portals leak amplitude
     this.portalLeak();
-    // decay markers & memory
     this.decayMarkers();
-
-    // renormalize fallback state
     const s = this.quantumEngine.state.reduce((a,b)=>a+b,0)||1;
     this.quantumEngine.state = this.quantumEngine.state.map(v=>v/s);
 
@@ -1023,10 +978,7 @@ this.coherence -= (3 + Math.floor(this.turnNumber / 7));
     this.tileMeta[a].linked = this.tileMeta[b].linked;
     this.tileMeta[b].linked = tmp;
   }
-
-  // ---------------- Visualization: probabilities, wavefield, memory ----------------
   visualizeProbs(probs) {
-    // clear old labels
     if (!this._labelGroup) this._labelGroup = [];
     this._labelGroup.forEach(t=>t.destroy());
     this._labelGroup = [];
@@ -1041,11 +993,9 @@ this.coherence -= (3 + Math.floor(this.turnNumber / 7));
       const lbl = this.add.text(this.panelX + 12 + (this.panelW - 44) + 8, y+1, p.toFixed(3), { fontSize: "12px", color:"#ddd" }).setDepth(9);
       this._labelGroup.push(lbl);
     }
-    // color current row tiles influenced by memory and probs
     const r = this.row;
     for (let c=0;c<this.gridW;c++) {
       const intensity = probs[c] || 0;
-      // tile fill influenced by memory (heat) and probability
       const mem = this.memory[c] || 0;
       const g = Math.floor(Math.min(220, 120 + 110 * intensity + 80 * mem));
       const b = Math.floor(Math.min(240, 160 + 60 * intensity));
@@ -1080,13 +1030,11 @@ this.coherence -= (3 + Math.floor(this.turnNumber / 7));
     grd.addColorStop(1, `rgba(6,6,12,0)`);
     ctx.fillStyle = grd; ctx.fillRect(0,0,w,h);
     this.textures.get('wave').refresh();
-    // tint based on coherence
     const hue = Phaser.Math.Interpolation.Linear([180, 0], 1 - (this.coherence / 100));
     this.cameras.main.setBackgroundColor(`hsl(${hue}, 50%, 4%)`);
     this.wavePhase += this.waveSpeed;
   }
 
-  // -------------------- Utility: weighted random, tones, UI ----------------
   weightedRandom(probs) {
     const s = probs.reduce((a,b)=>a+b,0)||1;
     let r = Math.random() * s;
@@ -1145,14 +1093,13 @@ this.coherence -= (3 + Math.floor(this.turnNumber / 7));
     this.energyText.setText(`Energy: ${this.energy}`);
     this.coherenceText.setText(`Coherence: ${Math.max(0, Math.round(this.coherence))}%`);
     this.turnText.setText(`Turn: ${this.turnNumber}`);
-    // update recent action texts in the panel
     for (let i=0;i<this.recentActionTexts.length;i++){
       const act = this.recentActions[i];
       this.recentActionTexts[i].setText(act ? `${act.time} ${act.key}: ${act.info}` : "");
     }
   }
 
-  // -------------------- Row specials & spawn --------------------
+
   placeRowSpecials(row) {
     for (let c=0;c<this.gridW;c++) {
       const p = Math.random();
@@ -1165,22 +1112,20 @@ this.coherence -= (3 + Math.floor(this.turnNumber / 7));
       else if (p < 0.40) this.setTileType(row,c,'hadamardBoost');
       else this.setTileType(row,c,'normal');
     }
-    // if portals exist on the same row, link pairs
+    
     const portals = [];
     for (let c=0;c<this.gridW;c++) if (this.tileMeta[`${row}_${c}`].type === 'portal') portals.push(c);
     if (portals.length >= 2) this.linkPortal(row, portals[0], row, portals[1]);
   }
 
-  // -------------------- lifecycle update --------------------
  update(time, delta) {
-  // player visual movement
   const speed = 4;
   if (this.cursors.left.isDown) { this.playerA.x -= speed; this.playerB.x += speed; }
   if (this.cursors.right.isDown) { this.playerA.x += speed; this.playerB.x -= speed; }
   this.playerA.x = Phaser.Math.Clamp(this.playerA.x, this.boardX + 20, this.boardX + this.boardW - 20);
   this.playerB.x = Phaser.Math.Clamp(this.playerB.x, this.boardX + 20, this.boardX + this.boardW - 20);
 
-  // input keys — block H/Q/E if out of energy
+  
   if (this.energy > 0) {
     if (Phaser.Input.Keyboard.JustDown(this.keyH)) { this.applyLocalHadamard(); this.autoPeekLog(); }
     if (Phaser.Input.Keyboard.JustDown(this.keyQ)) { this.applyPhase(); this.autoPeekLog(); }
@@ -1203,10 +1148,9 @@ this.coherence -= (3 + Math.floor(this.turnNumber / 7));
   }
   if (Phaser.Input.Keyboard.JustDown(this.keyL)) this.showLogOverlay(!this.logOpen, 160);
 
-  // wave field animation
+
   this.drawWaveField();
 
-  // update marker positions (so they track tiles if window resized or players move)
   for (const m of this.markers) {
     if (m.display && !m.display.destroyed) {
       const mx = this.boardX + m.c * this.tileSize + this.tileSize / 2;
@@ -1215,7 +1159,7 @@ this.coherence -= (3 + Math.floor(this.turnNumber / 7));
     }
   }
 
-  // update UI
+  
   this.updatePatternUI();
   this.updateUI();
 }
@@ -1236,7 +1180,7 @@ flashEnergyWarning() {
     onComplete: () => warn.destroy()
   });
 
-  // Flash the screen slightly red
+ 
   this.cameras.main.flash(150, 255, 40, 60);
 
   this.playTone(160, 0.1, 0.15);
@@ -1259,7 +1203,7 @@ showFloatingText(text, x, y, color = "#fff") {
   });
 }
 
-  // -------------------- cleanup and end --------------------
+ 
   restart() {
   this.children.each(child => {
     if (child && child.destroy && child !== this.cameras.main) {
@@ -1269,7 +1213,6 @@ showFloatingText(text, x, y, color = "#fff") {
   this.scene.stop();
   this.scene.start("FinalScene");
 }
-
 endGame(win) {
   const msg = win
     ? `✨ Quantum Victory! Score ${this.score}`
@@ -1278,7 +1221,7 @@ endGame(win) {
   if (this._ending) return;
   this._ending = true;
 
-  // --- Overlay blocking everything
+
   const overlay = this.add.rectangle(
     this.boardX + this.boardW / 2,
     this.canvasH / 2,
@@ -1288,7 +1231,7 @@ endGame(win) {
     0.85
   ).setDepth(300);
 
-  // --- Message text
+
   this.add.text(
     this.boardX + this.boardW / 2,
     this.canvasH / 2 - 30,
@@ -1296,7 +1239,7 @@ endGame(win) {
     { fontSize: "28px", color: "#fff", fontStyle: "bold" }
   ).setOrigin(0.5).setDepth(301);
 
-  // --- Celebration / failure particles
+ 
   for (let i = 0; i < 60; i++) {
     const px = this.add.circle(
       this.boardX + Phaser.Math.Between(0, this.boardW),
@@ -1314,7 +1257,6 @@ endGame(win) {
     });
   }
 
-  // --- Restart button
   const btn = this.add.text(
     this.boardX + this.boardW / 2,
     this.canvasH / 2 + 40,
@@ -1332,47 +1274,54 @@ endGame(win) {
 
   btn.on("pointerover", () => btn.setStyle({ backgroundColor: "#bff" }));
   btn.on("pointerout", () => btn.setStyle({ backgroundColor: "#9ff" }));
+  const restartGame = () => {
+    btn.disableInteractive();
+    this.playTone(600, 0.15, 0.1);
+    this.log("🔁 Quantum Field rebooting...");
 
-  
-const restartGame = () => {
-  btn.disableInteractive();
-  this.playTone(600, 0.15, 0.1);
-  this.log("🔁 Quantum Field rebooting...");
+    this.cameras.main.once("camerafadeoutcomplete", () => {
+      this.time.delayedCall(50, () => {
+        this.scene.start("FinalScene", { skipTutorial: true });
+      });
+    });
 
-  // Fade out smoothly
-  this.cameras.main.fadeOut(600, 0, 0, 0);
-
-  this.cameras.main.once("camerafadeoutcomplete", () => {
-    // Restart the scene with tutorial skipped
-    this.scene.start("FinalScene", { skipTutorial: true });
-  });
-};
-
-const menuBtn = this.add.text(
-  this.boardX + this.boardW / 2,
-  this.canvasH / 2 + 90,
-  "🏠 Return to Main Menu",
-  {
-    fontSize: "20px",
-    color: "#000",
-    backgroundColor: "#9ff",
-    padding: { x: 14, y: 8 }
-  }
-).setOrigin(0.5).setInteractive({ useHandCursor: true }).setDepth(305);
-
-menuBtn.on("pointerdown", () => {
-  this.playTone(400, 0.15, 0.1);
-  this.cameras.main.fadeOut(600, 0, 0, 0);
-  this.cameras.main.once("camerafadeoutcomplete", () => {
-    this.scene.start("StartScene");
-  });
-});
-
-console.log("Restart triggered → fading out...");
+    this.cameras.main.fadeOut(600, 0, 0, 0);
+  };
 
   btn.on("pointerdown", restartGame);
 
-  // --- Subtle overlay breathing
+  const menuBtn = this.add.text(
+    this.boardX + this.boardW / 2,
+    this.canvasH / 2 + 100,
+    "🏠 Return to Main Menu",
+    {
+      fontSize: "18px",
+      color: "#000",
+      backgroundColor: "#9ff",
+      padding: { x: 12, y: 7 }
+    }
+  )
+    .setOrigin(0.5)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(305);
+
+  menuBtn.on("pointerover", () => menuBtn.setStyle({ backgroundColor: "#bff" }));
+  menuBtn.on("pointerout", () => menuBtn.setStyle({ backgroundColor: "#9ff" }));
+
+  menuBtn.on("pointerdown", () => {
+    menuBtn.disableInteractive();
+    this.playTone(400, 0.15, 0.1);
+    this.log("🏠 Returning to main menu...");
+
+    this.cameras.main.once("camerafadeoutcomplete", () => {
+      this.time.delayedCall(50, () => {
+        this.scene.start("StartScene");
+      });
+    });
+
+    this.cameras.main.fadeOut(600, 0, 0, 0);
+  });
+
   this.tweens.add({
     targets: overlay,
     alpha: { from: 0.85, to: 0.92 },
@@ -1390,7 +1339,7 @@ const config = {
   height: 640,
   backgroundColor: "#05020a",
   parent: "game-container",
-  scene: [StartScene, FinalScene] // StartScene FIRST!
+  scene: [StartScene, FinalScene]
 };
 
 new Phaser.Game(config);
