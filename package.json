@@ -1,0 +1,14 @@
+{
+  "name": "qubit-quest",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "cd frontend && npm install --legacy-peer-deps && npm start",
+    "dev:backend": "cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+    "build:all": "bash backend/build_all.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

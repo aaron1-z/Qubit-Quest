@@ -7,6 +7,55 @@ It visualizes *superposition, **entanglement, and **wave-function collapse* thro
 
 ---
 
+## Installation & Local Setup Guide
+
+Follow these steps to run *Qubit Quest* on your local machine.
+
+---
+
+### 1️⃣ Clone the Repository
+```bash
+git clone https://github.com/aaron1-z/Qubit-Quest.git
+cd Qubit-Quest
+```
+
+### 2️⃣ Install Node.js Dependencies
+```bash
+Make sure you have Node.js (v18 or newer) and npm installed.
+
+npm install
+```
+
+This installs all required dependencies and sets up the concurrent runner to launch both backend and frontend together.
+---
+
+ ### 3️⃣ Install Python Dependencies
+```bash
+Ensure Python 3.9+ is installed.
+Then run:
+
+cd backend
+pip install -r requirements.txt
+cd ..
+
+(Optional but recommended: use a virtual environment)
+
+python -m venv venv
+venv\Scripts\activate     # On Windows
+source venv/bin/activate  # On macOS/Linux
+```
+
+
+---
+
+### 4️⃣ Run in Development Mode
+```bash
+To launch both backend and frontend together:
+
+npm start
+```
+
+
 ## Gameplay Overview
 
 You are the *Observer* of a simulated quantum field.  
