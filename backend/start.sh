@@ -4,7 +4,7 @@ set -e
 # Build frontend
 cd ../frontend
 npm install
-npm run build
+npx parcel build public/index.html --dist-dir dist --public-url ./
 
 # Go back to backend
 cd ../backend
