@@ -1,7 +1,9 @@
-// api.js — call backend FastAPI /api/qwalk
+const backendURL = 
+  import.meta.env.VITE_BACKEND_URL || "https://qubit-quest-backend.onrender.com";
+
 export async function runQWalk(params) {
   try {
-    const res = await fetch("http://localhost:8000/api/qwalk", {
+    const res = await fetch($`{backendURL}/api/qwalk`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params)
@@ -9,7 +11,6 @@ export async function runQWalk(params) {
     if (!res.ok) throw new Error("network");
     return await res.json();
   } catch (e) {
-    // return an error object so main.js can fallback
     return { error: "network" };
   }
 }

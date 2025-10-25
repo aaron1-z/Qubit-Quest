@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: qubit-quest-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash app/start.sh
+    plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: PORT
+        value: 8000
+        
+  - type: web
+    name: qubit-quest-frontend
+    env: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npx serve dist
+    plan: free
+    staticPublishPath: dist
+    envVars:
+      - key: BACKEND_URL
+        value: https://qubit-quest-backend.onrender.com
