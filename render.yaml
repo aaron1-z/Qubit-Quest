@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: qubit-quest
-    env: python
-    buildCommand: ./backend/start.sh
-    startCommand: ./backend/start.sh
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.8
