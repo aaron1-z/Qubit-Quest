@@ -11,14 +11,11 @@ services:
         value: 3.11
       - key: PORT
         value: 8000
-        
-  - type: web
+
+  - type: static
     name: qubit-quest-frontend
-    env: node
     rootDir: frontend
     buildCommand: npm install && npm run build
-    startCommand: npx serve dist
-    plan: free
     staticPublishPath: dist
     envVars:
       - key: BACKEND_URL
