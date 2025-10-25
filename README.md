@@ -3,6 +3,10 @@
 *Qubit Quest* is an interactive *quantum puzzle game* that fuses strategy, physics, and aesthetic minimalism.  
 It visualizes *superposition, **entanglement, and **wave-function collapse* through a neon grid powered by *Phaser 3, with real quantum walk simulations executed on a **FastAPI + NumPy* backend.
 
+
+https://github.com/user-attachments/assets/c756f770-b95f-4b5c-91ea-17e036cf0c42
+
+
 video recording : https://youtu.be/f8gxOBdpxoA?si=9j6mxzkCZGdmqFrq
 
 ![alt text](image.png)
