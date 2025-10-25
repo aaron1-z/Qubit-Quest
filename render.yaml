@@ -8,7 +8,7 @@ services:
     plan: free
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11
+        value: 3.11.8
       - key: PORT
         value: 8000
 
@@ -16,8 +16,12 @@ services:
     name: qubit-quest-frontend
     env: node
     rootDir: frontend
-    buildCommand: npm install && npm run build
-    startCommand: npx serve -s dist -l $PORT
+    buildCommand: |
+      npm install --force
+      npm install parcel@2.8.3 --save-dev
+      npm run build
+    startCommand: npx serve dist
+    staticPublishPath: dist
     plan: free
     envVars:
       - key: BACKEND_URL
